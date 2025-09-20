@@ -1,0 +1,300 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Clay-inspired design system */
+    --background: 0 0% 100%;
+    --foreground: 30 15% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 30 15% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 30 15% 15%;
+
+    /* Enhanced Clay Palette */
+    --primary: 22 89% 52%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 22 89% 47%;
+    --primary-glow: 22 89% 65%;
+
+    /* Sophisticated Secondary */
+    --secondary: 25 8% 94%;
+    --secondary-foreground: 25 12% 25%;
+    --secondary-hover: 25 12% 90%;
+
+    /* Refined Muted Tones */
+    --muted: 25 8% 94%;
+    --muted-foreground: 25 6% 52%;
+
+    /* Vibrant Accent */
+    --accent: 168 76% 42%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 168 76% 37%;
+    --accent-glow: 168 76% 55%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 24 95% 53%;
+
+    --radius: 1rem;
+
+    /* Enhanced Clay Palette */
+    --clay-brown: 28 45% 35%;
+    --clay-light: 28 25% 88%;
+    --clay-dark: 28 35% 25%;
+    --studio-gray: 25 8% 55%;
+    --canvas-bg: 28 15% 97%;
+    --warm-beige: 35 25% 92%;
+
+    /* Rich Gradients */
+    --gradient-clay: linear-gradient(135deg, hsl(var(--primary)), hsl(var(--clay-brown)));
+    --gradient-canvas: linear-gradient(180deg, hsl(var(--canvas-bg)), hsl(var(--warm-beige)));
+    --gradient-tool: linear-gradient(145deg, hsl(var(--secondary)), hsl(var(--clay-light)));
+    --gradient-glow: radial-gradient(circle at center, hsl(var(--primary-glow) / 0.3), transparent 70%);
+
+    /* Enhanced Shadows */
+    --shadow-clay: 0 12px 35px -12px hsl(var(--primary) / 0.25), 0 4px 15px -4px hsl(var(--primary) / 0.1);
+    --shadow-tool: 0 6px 20px -6px hsl(var(--foreground) / 0.08), 0 2px 8px -2px hsl(var(--foreground) / 0.04);
+    --shadow-floating: 0 10px 30px -10px hsl(var(--foreground) / 0.12), 0 4px 15px -4px hsl(var(--foreground) / 0.06);
+    --shadow-glow: 0 0 40px hsl(var(--primary-glow) / 0.4);
+    --shadow-inner: inset 0 2px 6px hsl(var(--foreground) / 0.05);
+
+    /* Animations */
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-bounce: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+    --sidebar-background: 0 0% 98%;
+
+    --sidebar-foreground: 240 5.3% 26.1%;
+
+    --sidebar-primary: 240 5.9% 10%;
+
+    --sidebar-primary-foreground: 0 0% 98%;
+
+    --sidebar-accent: 240 4.8% 95.9%;
+
+    --sidebar-accent-foreground: 240 5.9% 10%;
+
+    --sidebar-border: 220 13% 91%;
+
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+
+  .dark {
+    /* Dark clay studio theme */
+    --background: 30 15% 8%;
+    --foreground: 30 5% 95%;
+
+    --card: 30 15% 10%;
+    --card-foreground: 30 5% 95%;
+
+    --popover: 30 15% 10%;
+    --popover-foreground: 30 5% 95%;
+
+    --primary: 24 95% 53%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 24 95% 58%;
+
+    --secondary: 30 8% 20%;
+    --secondary-foreground: 30 5% 95%;
+
+    --muted: 30 8% 20%;
+    --muted-foreground: 30 5% 65%;
+
+    --accent: 159 64% 42%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 159 64% 47%;
+
+    --destructive: 0 75% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 30 8% 25%;
+    --input: 30 8% 25%;
+    --ring: 24 95% 53%;
+
+    /* Dark clay colors */
+    --clay-brown: 25 45% 35%;
+    --clay-light: 30 25% 25%;
+    --studio-gray: 30 5% 45%;
+    --canvas-bg: 30 12% 12%;
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans;
+    touch-action: manipulation; /* Optimize for touch */
+    -webkit-user-select: none; /* Prevent text selection on mobile */
+    user-select: none;
+  }
+
+  /* Mobile-first optimizations */
+  html {
+    -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+  }
+
+  /* Custom scrollbars */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    @apply bg-muted;
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    @apply bg-muted-foreground/30 rounded-full;
+  }
+}
+
+@layer components {
+  /* Enhanced Clay Buttons */
+  .btn-clay {
+    @apply bg-gradient-to-br from-primary via-primary-hover to-clay-brown text-primary-foreground;
+    @apply shadow-clay hover:shadow-glow transition-all duration-500;
+    @apply hover:scale-105 active:scale-95 relative overflow-hidden;
+    @apply before:absolute before:inset-0 before:bg-gradient-to-r before:from-transparent before:via-white/20 before:to-transparent;
+    @apply before:translate-x-[-100%] hover:before:translate-x-[100%] before:transition-transform before:duration-700;
+  }
+
+  .btn-tool {
+    @apply bg-gradient-tool border border-border/30 shadow-tool;
+    @apply hover:bg-secondary-hover hover:shadow-floating transition-all duration-300;
+    @apply active:scale-95 touch-manipulation relative;
+    @apply hover:border-primary/20;
+  }
+
+  .btn-tool-active {
+    @apply bg-gradient-to-br from-primary to-primary-hover text-primary-foreground;
+    @apply shadow-glow border-primary/50;
+    @apply animate-pulse;
+  }
+
+  /* Enhanced Floating UI */
+  .floating-panel {
+    @apply bg-card/95 backdrop-blur-xl border border-border/30;
+    @apply shadow-floating rounded-3xl p-6;
+    @apply before:absolute before:inset-0 before:bg-gradient-glow before:opacity-50 before:rounded-3xl before:-z-10;
+    @apply relative;
+  }
+
+  .floating-panel-sm {
+    @apply bg-card/90 backdrop-blur-lg border border-border/40;
+    @apply shadow-tool rounded-2xl p-4;
+  }
+
+  /* Touch-optimized Elements */
+  .touch-target {
+    @apply min-h-[48px] min-w-[48px] flex items-center justify-center;
+    @apply touch-manipulation select-none;
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+
+  /* Text Styles */
+  .text-display {
+    @apply font-display font-semibold tracking-wide;
+  }
+
+  .text-hero {
+    @apply font-display font-bold text-4xl md:text-6xl lg:text-7xl;
+    @apply bg-gradient-to-br from-foreground via-foreground to-foreground/70 bg-clip-text text-transparent;
+  }
+
+  .text-section {
+    @apply font-display font-medium text-xl md:text-2xl;
+  }
+
+  /* 3D canvas container */
+  .canvas-3d {
+    @apply w-full h-full touch-none;
+    @apply bg-gradient-to-br from-canvas-bg to-background;
+  }
+
+  /* Smooth animations */
+  .animate-scale-in {
+    animation: scaleIn 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out;
+  }
+
+  /* Focus indicators for accessibility */
+  .focus-ring {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  /* Loading states */
+  .loading-shimmer {
+    background: linear-gradient(90deg, transparent, hsl(var(--muted)), transparent);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+  }
+}
+
+@keyframes scaleIn {
+  0% {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
