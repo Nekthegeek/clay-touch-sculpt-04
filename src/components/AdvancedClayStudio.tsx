@@ -10,6 +10,8 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { TutorialSystem } from './TutorialSystem';
 import { ToolFeedback } from './ToolFeedback';
 import { ToolStrengthControls } from './ToolStrengthControls';
+import { StatusIndicator } from './StatusIndicator';
+import { ContextualTooltip } from './ContextualTooltip';
 import { toast } from 'sonner';
 import { useCommandManager } from '@/hooks/useCommandManager';
 import { useProjectManager } from '@/hooks/useProjectManager';
@@ -80,6 +82,8 @@ export const AdvancedClayStudio: React.FC = () => {
   });
   const [toolStrength, setToolStrength] = useState(50);
   const [toolSize, setToolSize] = useState(1.0);
+  const [showTooltip, setShowTooltip] = useState(true);
+  const [sculptingStatus, setSculptingStatus] = useState<'idle' | 'sculpting' | 'saving' | 'exporting' | 'complete'>('idle');
 
   // Refs for accessing ClayObject geometries
   const objectRefs = useRef<{ [key: string]: ClayObjectRef | null }>({});
@@ -420,23 +424,49 @@ export const AdvancedClayStudio: React.FC = () => {
         onToolChange={tool => setCurrentTool(tool)}
       />
 
+      {/* Status Indicator */}
+      <div className="absolute top-20 left-4 z-20">
+        <StatusIndicator
+          status={sculptingStatus}
+          currentTool={currentTool}
+          toolStrength={toolStrength}
+        />
+      </div>
+
+      {/* Contextual Tooltip */}
+      <div className="absolute top-20 right-4 z-20 max-w-xs">
+        <ContextualTooltip
+          currentTool={currentTool}
+          isVisible={showTooltip}
+          onDismiss={() => setShowTooltip(false)}
+        />
+      </div>
+
       {/* Enhanced Mobile Hints */}
       {mobileOptions.screenSize === 'small' && (
-        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 floating-panel-sm max-w-xs text-center md:hidden">
-          <p className="text-xs text-muted-foreground">
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 floating-panel-sm max-w-xs text-center md:hidden animate-fade-in">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            <span className="text-primary font-medium">Touch Tips:</span><br />
             Long press for stronger sculpting • Double tap to smooth • Pinch to zoom
           </p>
         </div>
       )}
 
-      {/* Current Tool Indicator - Desktop only */}
-      <div className="absolute bottom-4 left-4 floating-panel-sm hidden md:block">
-        <div className="flex items-center gap-2">
-          <div className="w-3 h-3 rounded-full bg-primary"></div>
-          <span className="text-xs font-medium capitalize">{currentTool.replace('-', ' ')}</span>
+      {/* Enhanced Tool Indicator - Desktop only */}
+      <div className="absolute bottom-4 left-4 floating-panel-sm hidden md:block animate-scale-in">
+        <div className="flex items-center gap-3">
+          <div className="w-3 h-3 rounded-full bg-primary shadow-glow animate-pulse"></div>
+          <div className="flex flex-col">
+            <span className="text-xs font-semibold capitalize text-foreground">
+              {currentTool.replace('-', ' ')}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              Strength: {toolStrength}%
+            </span>
+          </div>
           {currentTool === 'paint' && (
             <div 
-              className="w-4 h-4 rounded border border-border ml-2"
+              className="w-5 h-5 rounded-lg border-2 border-border shadow-inner ml-2"
               style={{ backgroundColor: currentColor }}
             />
           )}
@@ -445,8 +475,11 @@ export const AdvancedClayStudio: React.FC = () => {
 
       {/* Mobile Performance Indicator */}
       {!isHighPerformance && (
-        <div className="absolute top-16 right-4 bg-amber-500/90 text-amber-50 px-3 py-1 rounded-full text-xs md:hidden">
-          Performance Mode
+        <div className="absolute top-72 right-4 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-2 rounded-full text-xs md:hidden shadow-lg backdrop-blur-sm animate-fade-in">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-white/80 rounded-full animate-pulse"></div>
+            Performance Mode
+          </div>
         </div>
       )}
       </div>
