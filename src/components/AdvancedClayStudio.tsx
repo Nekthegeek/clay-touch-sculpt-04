@@ -15,6 +15,8 @@ import { useCommandManager } from '@/hooks/useCommandManager';
 import { useProjectManager } from '@/hooks/useProjectManager';
 import { useGeometryCache } from '@/hooks/useGeometryCache';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
+import { useMobileOptimizations, useMobilePerformance } from '@/hooks/useMobileOptimizations';
+import { MobileNavigation } from './MobileNavigation';
 import { stlExporter } from '@/services/stlExporter';
 import { 
   AddObjectCommand, 
@@ -103,6 +105,10 @@ export const AdvancedClayStudio: React.FC = () => {
 
   // Project manager for save/load
   const { saveProject } = useProjectManager();
+
+  // Mobile optimizations
+  const mobileOptions = useMobileOptimizations();
+  const { isHighPerformance, settings } = useMobilePerformance();
 
   const handleAddObject = useCallback(() => {
     const newObject: ClayObjectData = {
@@ -295,9 +301,16 @@ export const AdvancedClayStudio: React.FC = () => {
       <div className="absolute inset-0 canvas-3d">
         <Suspense fallback={<CanvasLoader />}>
           <Canvas
-            camera={{ position: [0, 0, 8], fov: 50 }}
-            shadows
-            gl={{ antialias: true, alpha: true }}
+            camera={{ 
+              position: [0, 0, 8], 
+              fov: mobileOptions.isPortrait ? 60 : 50 
+            }}
+            shadows={settings.shadows}
+            gl={{ 
+              antialias: settings.antialiasing, 
+              alpha: true,
+              powerPreference: isHighPerformance ? 'high-performance' : 'low-power'
+            }}
           >
             <Lighting />
             
@@ -337,37 +350,67 @@ export const AdvancedClayStudio: React.FC = () => {
               enableZoom={true}
               enableRotate={true}
               minDistance={4}
-              maxDistance={15}
+              maxDistance={settings.renderDistance}
               minPolarAngle={Math.PI / 6}
               maxPolarAngle={Math.PI - Math.PI / 6}
+              // Enhanced touch controls for mobile
+              touches={{
+                ONE: THREE.TOUCH.ROTATE,
+                TWO: THREE.TOUCH.DOLLY_PAN
+              }}
+              mouseButtons={{
+                LEFT: THREE.MOUSE.ROTATE,
+                MIDDLE: THREE.MOUSE.DOLLY,
+                RIGHT: THREE.MOUSE.PAN
+              }}
+              enableDamping={true}
+              dampingFactor={0.05}
             />
           </Canvas>
         </Suspense>
       </div>
 
-      {/* Floating Tool Panel */}
-      <ToolPanel currentTool={currentTool} onToolChange={setCurrentTool} />
+      {/* Desktop Tool Panel - Hidden on mobile */}
+      <div className="hidden md:block">
+        <ToolPanel currentTool={currentTool} onToolChange={setCurrentTool} />
+      </div>
 
-      {/* Tool Strength Controls */}
-      <ToolStrengthControls
-        toolStrength={toolStrength}
-        toolSize={toolSize}
-        onStrengthChange={setToolStrength}
-        onSizeChange={setToolSize}
+      {/* Mobile Navigation */}
+      <MobileNavigation
         currentTool={currentTool}
+        onToolChange={(tool: string) => setCurrentTool(tool as any)}
+        onSave={handleSave}
+        onExport={handleExport}
+        onAddObject={handleAddObject}
+        onShowProjects={() => {/* Handle project dialog */}}
+        onShowHelp={() => setShowTutorial(true)}
+        onShowColorPicker={() => {/* Handle color picker */}}
       />
 
-      {/* Object Manager */}
-      <ObjectManager
-        objects={objects}
-        selectedObjectId={selectedObjectId}
-        onAddObject={handleAddObject}
-        onDeleteObject={handleDeleteObject}
-        onDuplicateObject={handleDuplicateObject}
-        onSelectObject={handleSelectObject}
-        onColorChange={handleColorChange}
-        currentColor={currentColor}
-      />
+      {/* Tool Strength Controls - Responsive positioning */}
+      <div className={`${mobileOptions.isPortrait ? 'top-20' : 'top-4'} ${mobileOptions.safeArea.right > 0 ? 'pr-8' : ''}`}>
+        <ToolStrengthControls
+          toolStrength={toolStrength}
+          toolSize={toolSize}
+          onStrengthChange={setToolStrength}
+          onSizeChange={setToolSize}
+          currentTool={currentTool}
+        />
+      </div>
+
+      {/* Object Manager - Desktop only, mobile uses MobileNavigation */}
+      <div className="hidden md:block">
+        <ObjectManager
+          objects={objects}
+          selectedObjectId={selectedObjectId}
+          onAddObject={handleAddObject}
+          onDeleteObject={handleDeleteObject}
+          onDuplicateObject={handleDuplicateObject}
+          onSelectObject={handleSelectObject}
+          onColorChange={handleColorChange}
+          currentColor={currentColor}
+        />
+      </div>
 
       {/* Tutorial System */}
       <TutorialSystem
@@ -377,15 +420,17 @@ export const AdvancedClayStudio: React.FC = () => {
         onToolChange={tool => setCurrentTool(tool)}
       />
 
-      {/* Enhanced Onboarding Hint */}
-      <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 floating-panel max-w-sm text-center md:hidden">
-        <p className="text-xs text-muted-foreground">
-          Press ? for shortcuts • Use tool strength controls • Tutorial available
-        </p>
-      </div>
+      {/* Enhanced Mobile Hints */}
+      {mobileOptions.screenSize === 'small' && (
+        <div className="absolute bottom-24 left-1/2 transform -translate-x-1/2 floating-panel-sm max-w-xs text-center md:hidden">
+          <p className="text-xs text-muted-foreground">
+            Long press for stronger sculpting • Double tap to smooth • Pinch to zoom
+          </p>
+        </div>
+      )}
 
-      {/* Current Tool Indicator */}
-      <div className="absolute bottom-4 left-4 floating-panel">
+      {/* Current Tool Indicator - Desktop only */}
+      <div className="absolute bottom-4 left-4 floating-panel-sm hidden md:block">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-primary"></div>
           <span className="text-xs font-medium capitalize">{currentTool.replace('-', ' ')}</span>
@@ -396,7 +441,14 @@ export const AdvancedClayStudio: React.FC = () => {
             />
           )}
         </div>
+      </div>
+
+      {/* Mobile Performance Indicator */}
+      {!isHighPerformance && (
+        <div className="absolute top-16 right-4 bg-amber-500/90 text-amber-50 px-3 py-1 rounded-full text-xs md:hidden">
+          Performance Mode
         </div>
+      )}
       </div>
     </ErrorBoundary>
   );

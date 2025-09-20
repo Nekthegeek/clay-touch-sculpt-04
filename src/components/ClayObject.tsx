@@ -1,6 +1,7 @@
 import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useTouchGestures } from '@/hooks/useTouchGestures';
 
 interface ClayObjectProps {
   id: string;
@@ -40,7 +41,31 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
   const [selectedVertices, setSelectedVertices] = useState<Set<number>>(new Set());
   const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
   const [geometryModified, setGeometryModified] = useState(false);
+  const [touchIntensity, setTouchIntensity] = useState(1);
   const { raycaster, camera } = useThree();
+
+  // Enhanced touch gestures for mobile sculpting
+  const { touchHandlers, isLongPressing, triggerHaptic } = useTouchGestures({
+    onLongPress: () => {
+      if (currentTool === 'push' || currentTool === 'pull') {
+        setTouchIntensity(2); // Increase intensity for long press
+        triggerHaptic('medium');
+      }
+    },
+    onDoubleTap: () => {
+      if (currentTool === 'smooth') {
+        triggerHaptic('light');
+        // Quick smooth burst
+        setTouchIntensity(3);
+        setTimeout(() => setTouchIntensity(1), 200);
+      }
+    },
+    onPinch: (scale) => {
+      if (currentTool === 'inflate' && scale > 1.1) {
+        triggerHaptic('light');
+      }
+    }
+  });
 
   // Expose methods to parent via ref
   useImperativeHandle(ref, () => ({
@@ -138,9 +163,9 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
         texture.needsUpdate = true;
       }
     } else {
-      // Standard sculpting tools with dynamic strength and size
+      // Standard sculpting tools with dynamic strength, size, and touch intensity
       const baseStrength = currentTool === 'push' ? -0.1 : currentTool === 'pull' ? 0.1 : 0.05;
-      const adjustedStrength = baseStrength * (toolStrength / 50); // Scale by strength setting
+      const adjustedStrength = baseStrength * (toolStrength / 50) * touchIntensity; // Include touch intensity
       const influenceRadius = 0.3 * toolSize; // Scale by size setting
       
       const localPoint = point.clone();
@@ -233,9 +258,13 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
           setClicked(true);
           onSelect(id);
         }}
-        onPointerUp={() => setClicked(false)}
+        onPointerUp={() => {
+          setClicked(false);
+          setTouchIntensity(1); // Reset touch intensity
+        }}
         onPointerMove={handleVertexManipulation}
         onClick={() => onSelect(id)}
+        {...touchHandlers}
       >
         <sphereGeometry ref={geometryRef} args={[size, 64, 64]} />
         <meshStandardMaterial

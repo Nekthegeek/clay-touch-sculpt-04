@@ -148,12 +148,28 @@ All colors MUST be HSL.
     touch-action: manipulation; /* Optimize for touch */
     -webkit-user-select: none; /* Prevent text selection on mobile */
     user-select: none;
+    /* Support for safe area insets on mobile devices with notches */
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   /* Mobile-first optimizations */
   html {
     -webkit-tap-highlight-color: transparent;
     -webkit-touch-callout: none;
+    /* Prevent zoom on double tap */
+    touch-action: manipulation;
+    /* Support viewport-fit for devices with notches */
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  /* Fix for mobile viewport height issues */
+  #root {
+    height: 100vh;
+    height: -webkit-fill-available;
   }
 
   /* Custom scrollbars */
@@ -211,6 +227,25 @@ All colors MUST be HSL.
     @apply min-h-[48px] min-w-[48px] flex items-center justify-center;
     @apply touch-manipulation select-none;
     @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+    /* Enhanced touch feedback */
+    -webkit-tap-highlight-color: rgba(0, 0, 0, 0.1);
+    transition: transform 0.1s ease-out;
+  }
+
+  .touch-target:active {
+    transform: scale(0.95);
+  }
+
+  /* Mobile gesture indicators */
+  .gesture-hint {
+    @apply absolute pointer-events-none opacity-50;
+    animation: pulseHint 2s infinite;
+  }
+
+  /* Enhanced mobile scrolling */
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
   }
 
   /* Text Styles */
@@ -296,5 +331,16 @@ All colors MUST be HSL.
   }
   100% {
     background-position: 200% 0;
+  }
+}
+
+@keyframes pulseHint {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.1);
   }
 }
