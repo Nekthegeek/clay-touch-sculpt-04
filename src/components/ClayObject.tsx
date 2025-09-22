@@ -1,7 +1,9 @@
-import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useImperativeHandle, forwardRef, useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useTouchGestures } from '@/hooks/useTouchGestures';
+import type { ClayObjectData } from '@/types/project';
+import { deserializeGeometry } from '@/lib/geometryUtils';
 
 interface ClayObjectProps {
   id: string;
@@ -14,6 +16,7 @@ interface ClayObjectProps {
   onGeometryChange?: (id: string, geometry: THREE.BufferGeometry) => void;
   toolStrength?: number;
   toolSize?: number;
+  geometry?: ClayObjectData['geometry'];
 }
 
 export interface ClayObjectRef {
@@ -21,7 +24,7 @@ export interface ClayObjectRef {
   getModifiedGeometry: () => THREE.BufferGeometry | null;
 }
 
-export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
+export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({ 
   id,
   position,
   currentTool,
@@ -31,10 +34,11 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
   size,
   onGeometryChange,
   toolStrength = 50,
-  toolSize = 1.0
+  toolSize = 1.0,
+  geometry: initialGeometryData
 }, ref) => {
   const meshRef = useRef<THREE.Mesh>(null);
-  const geometryRef = useRef<THREE.SphereGeometry>(null);
+  const geometryRef = useRef<THREE.BufferGeometry | null>(null);
   const materialRef = useRef<THREE.MeshStandardMaterial>(null);
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
@@ -42,7 +46,29 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
   const [texture, setTexture] = useState<THREE.CanvasTexture | null>(null);
   const [geometryModified, setGeometryModified] = useState(false);
   const [touchIntensity, setTouchIntensity] = useState(1);
-  const { raycaster, camera } = useThree();
+  const { raycaster } = useThree();
+
+  const baseGeometry = useMemo(() => {
+    const loadedGeometry = deserializeGeometry(initialGeometryData);
+    if (loadedGeometry) {
+      return loadedGeometry;
+    }
+
+    return new THREE.SphereGeometry(size, 64, 64);
+  }, [initialGeometryData, size]);
+
+  useEffect(() => {
+    geometryRef.current = baseGeometry;
+
+    return () => {
+      baseGeometry.dispose();
+    };
+  }, [baseGeometry]);
+
+  useEffect(() => {
+    setSelectedVertices(new Set());
+    setGeometryModified(false);
+  }, [initialGeometryData]);
 
   // Enhanced touch gestures for mobile sculpting
   const { touchHandlers, isLongPressing, triggerHaptic } = useTouchGestures({
@@ -104,7 +130,8 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
 
     const point = intersects[0].point;
     const geometry = geometryRef.current;
-    const positions = geometry.attributes.position;
+    const positions = geometry.getAttribute('position') as THREE.BufferAttribute;
+    if (!positions) return;
 
     if (currentTool === 'vertex-select') {
       // Find nearest vertex for selection
@@ -266,7 +293,7 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
         onClick={() => onSelect(id)}
         {...touchHandlers}
       >
-        <sphereGeometry ref={geometryRef} args={[size, 64, 64]} />
+        <primitive attach="geometry" object={baseGeometry} />
         <meshStandardMaterial
           ref={materialRef}
           color={color}
@@ -283,8 +310,10 @@ export const ClayObject = forwardRef<ClayObjectRef, ClayObjectProps>(({
         <>
           {Array.from(selectedVertices).map(vertexIndex => {
             if (!geometryRef.current) return null;
+            const positionAttribute = geometryRef.current.getAttribute('position') as THREE.BufferAttribute;
+            if (!positionAttribute) return null;
             const vertex = new THREE.Vector3().fromBufferAttribute(
-              geometryRef.current.attributes.position,
+              positionAttribute,
               vertexIndex
             );
             return (

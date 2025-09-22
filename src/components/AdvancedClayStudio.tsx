@@ -20,13 +20,14 @@ import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { useMobileOptimizations, useMobilePerformance } from '@/hooks/useMobileOptimizations';
 import { MobileNavigation } from './MobileNavigation';
 import { stlExporter } from '@/services/stlExporter';
-import { 
-  AddObjectCommand, 
-  DeleteObjectCommand, 
-  DuplicateObjectCommand, 
-  ColorChangeCommand 
+import {
+  AddObjectCommand,
+  DeleteObjectCommand,
+  DuplicateObjectCommand,
+  ColorChangeCommand
 } from '@/services/commandManager';
 import { ClayObjectData } from '@/services/projectManager';
+import { deserializeGeometry } from '@/lib/geometryUtils';
 
 // Enhanced Lighting setup
 function Lighting() {
@@ -277,14 +278,24 @@ export const AdvancedClayStudio: React.FC = () => {
     // Clear existing geometry cache
     clearCache();
     objectRefs.current = {};
-    
+
+    loadedObjects.forEach(obj => {
+      if (obj.geometry) {
+        const rebuiltGeometry = deserializeGeometry(obj.geometry);
+        if (rebuiltGeometry) {
+          updateGeometry(obj.id, rebuiltGeometry);
+          rebuiltGeometry.dispose();
+        }
+      }
+    });
+
     setObjects(loadedObjects);
     setSelectedObjectId(loadedObjects[0]?.id || null);
     if (loadedObjects[0]) {
       setCurrentColor(loadedObjects[0].color);
     }
     clearHistory(); // Clear undo/redo history when loading new project
-  }, [clearHistory, clearCache]);
+  }, [clearHistory, clearCache, updateGeometry]);
 
   return (
     <ErrorBoundary>
@@ -338,6 +349,7 @@ export const AdvancedClayStudio: React.FC = () => {
                 onGeometryChange={handleGeometryChange}
                 toolStrength={toolStrength}
                 toolSize={toolSize}
+                geometry={object.geometry}
               />
             ))}
             
