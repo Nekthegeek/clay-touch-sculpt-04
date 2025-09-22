@@ -1,5 +1,9 @@
 import { ClayObjectData } from './projectManager';
 
+type SetObjectsAction = (
+  value: ClayObjectData[] | ((prev: ClayObjectData[]) => ClayObjectData[])
+) => void;
+
 export interface Command {
   execute(): void;
   undo(): void;
@@ -9,7 +13,7 @@ export interface Command {
 export class AddObjectCommand implements Command {
   constructor(
     private objects: ClayObjectData[],
-    private setObjects: (objects: ClayObjectData[]) => void,
+    private setObjects: SetObjectsAction,
     private newObject: ClayObjectData,
     private setSelectedObjectId: (id: string | null) => void
   ) {}
@@ -32,23 +36,54 @@ export class AddObjectCommand implements Command {
 }
 
 export class DeleteObjectCommand implements Command {
+  private previousObjects: ClayObjectData[] | null = null;
+  private postDeleteObjects: ClayObjectData[] | null = null;
+
   constructor(
     private objects: ClayObjectData[],
-    private setObjects: (objects: ClayObjectData[]) => void,
+    private setObjects: SetObjectsAction,
     private deletedObject: ClayObjectData,
     private setSelectedObjectId: (id: string | null) => void,
     private previousSelectedId: string | null
   ) {}
 
   execute(): void {
-    const newObjects = this.objects.filter(obj => obj.id !== this.deletedObject.id);
-    this.setObjects(newObjects);
-    this.setSelectedObjectId(newObjects[0]?.id || null);
+    this.setObjects(prev => {
+      const snapshot = [...prev];
+      const filtered = prev.filter(obj => obj.id !== this.deletedObject.id);
+
+      this.previousObjects = snapshot;
+      this.postDeleteObjects = filtered;
+      this.objects = filtered;
+
+      return filtered;
+    });
+
+    const nextSelectedId = this.postDeleteObjects?.[0]?.id ?? null;
+    this.setSelectedObjectId(nextSelectedId);
   }
 
   undo(): void {
-    const newObjects = [...this.objects, this.deletedObject];
-    this.setObjects(newObjects);
+    if (this.previousObjects) {
+      const restored = this.previousObjects;
+      this.setObjects(() => {
+        this.objects = restored;
+        return restored;
+      });
+    } else {
+      this.setObjects(prev => {
+        if (prev.some(obj => obj.id === this.deletedObject.id)) {
+          this.objects = prev;
+          return prev;
+        }
+
+        const restored = [...prev, this.deletedObject];
+        this.objects = restored;
+        return restored;
+      });
+    }
+
+    this.postDeleteObjects = null;
     this.setSelectedObjectId(this.previousSelectedId);
   }
 
@@ -60,7 +95,7 @@ export class DeleteObjectCommand implements Command {
 export class DuplicateObjectCommand implements Command {
   constructor(
     private objects: ClayObjectData[],
-    private setObjects: (objects: ClayObjectData[]) => void,
+    private setObjects: SetObjectsAction,
     private duplicatedObject: ClayObjectData,
     private setSelectedObjectId: (id: string | null) => void
   ) {}
@@ -84,7 +119,7 @@ export class DuplicateObjectCommand implements Command {
 export class ColorChangeCommand implements Command {
   constructor(
     private objects: ClayObjectData[],
-    private setObjects: (objects: ClayObjectData[]) => void,
+    private setObjects: SetObjectsAction,
     private objectId: string,
     private newColor: string,
     private oldColor: string,
