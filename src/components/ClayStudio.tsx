@@ -12,59 +12,106 @@ function ClayBall({ currentTool }: { currentTool: string }) {
   const [hovered, setHovered] = useState(false);
   const [clicked, setClicked] = useState(false);
   const [deformations, setDeformations] = useState<Array<{ position: THREE.Vector3; strength: number; tool: string }>>([]);
-  const { raycaster, camera } = useThree();
+
+  // Batch pointer events with requestAnimationFrame to avoid processing many events per frame
+  const latestPointRef = useRef<THREE.Vector3 | null>(null);
+  const rafScheduledRef = useRef(false);
+  const tmpVec = useRef(new THREE.Vector3());
+
+  // Process a single point (in world space) per frame
+  const processPoint = useCallback((point: THREE.Vector3) => {
+    if (!meshRef.current || !geometryRef.current) return;
+
+    const strength = currentTool === 'push' ? -0.1 : currentTool === 'pull' ? 0.1 : 0.05;
+
+    setDeformations(prev => [...prev, { position: point.clone(), strength, tool: currentTool }]);
+
+    const geometry = geometryRef.current;
+    const positions = geometry.attributes.position;
+
+    // Convert world point to local mesh space once
+    const localPoint = tmpVec.current.copy(point);
+    meshRef.current.worldToLocal(localPoint);
+
+    const radius = 0.3;
+    const radiusSq = radius * radius;
+
+    for (let i = 0; i < positions.count; i++) {
+      const vx = positions.getX(i);
+      const vy = positions.getY(i);
+      const vz = positions.getZ(i);
+
+      const dx = vx - localPoint.x;
+      const dy = vy - localPoint.y;
+      const dz = vz - localPoint.z;
+      const distSq = dx * dx + dy * dy + dz * dz;
+
+      if (distSq < radiusSq) {
+        const distance = Math.sqrt(distSq);
+        const influence = Math.max(0, 1 - distance / radius);
+
+        // approximate normal by normalizing vertex position
+        const nx = vx;
+        const ny = vy;
+        const nz = vz;
+        const len = Math.sqrt(nx * nx + ny * ny + nz * nz) || 1;
+        const inx = nx / len;
+        const iny = ny / len;
+        const inz = nz / len;
+
+        let newX = vx;
+        let newY = vy;
+        let newZ = vz;
+
+        if (currentTool === 'push') {
+          newX += -strength * influence * inx;
+          newY += -strength * influence * iny;
+          newZ += -strength * influence * inz;
+        } else if (currentTool === 'pull') {
+          newX += strength * influence * inx;
+          newY += strength * influence * iny;
+          newZ += strength * influence * inz;
+        } else if (currentTool === 'smooth') {
+          // lightweight smoothing: nudge towards origin-normal direction
+          newX += (inx - vx) * 0.02 * influence;
+          newY += (iny - vy) * 0.02 * influence;
+          newZ += (inz - vz) * 0.02 * influence;
+        } else if (currentTool === 'flatten') {
+          newY *= (1 - influence * 0.5);
+        } else if (currentTool === 'inflate') {
+          newX += strength * influence * 2 * inx;
+          newY += strength * influence * 2 * iny;
+          newZ += strength * influence * 2 * inz;
+        } else if (currentTool === 'twist') {
+          const angle = influence * 0.2;
+          const cos = Math.cos(angle);
+          const sin = Math.sin(angle);
+          newX = vx * cos - vz * sin;
+          newZ = vx * sin + vz * cos;
+        }
+
+        positions.setXYZ(i, newX, newY, newZ);
+      }
+    }
+
+    positions.needsUpdate = true;
+    geometry.computeVertexNormals();
+  }, [currentTool]);
 
   const handlePointerMove = useCallback((event: any) => {
-    if (!clicked || !meshRef.current || !geometryRef.current) return;
+    if (!clicked) return;
+    if (!event.point) return; // rely on r3f intersection point
 
-    const intersects = raycaster.intersectObject(meshRef.current);
-    if (intersects.length > 0) {
-      const point = intersects[0].point;
-      const strength = currentTool === 'push' ? -0.1 : currentTool === 'pull' ? 0.1 : 0.05;
-      
-      setDeformations(prev => [...prev, { position: point.clone(), strength, tool: currentTool }]);
-      
-      // Apply deformation to geometry
-      const geometry = geometryRef.current;
-      const positions = geometry.attributes.position;
-      
-      for (let i = 0; i < positions.count; i++) {
-        const vertex = new THREE.Vector3().fromBufferAttribute(positions, i);
-        const distance = vertex.distanceTo(point);
-        
-        if (distance < 0.3) {
-          const influence = Math.max(0, 1 - distance / 0.3);
-          const normal = vertex.clone().normalize();
-          
-          if (currentTool === 'push') {
-            vertex.addScaledVector(normal, -strength * influence);
-          } else if (currentTool === 'pull') {
-            vertex.addScaledVector(normal, strength * influence);
-          } else if (currentTool === 'smooth') {
-            // Smooth by averaging with nearby vertices
-            vertex.lerp(new THREE.Vector3().fromBufferAttribute(positions, i), 0.9);
-          } else if (currentTool === 'flatten') {
-            vertex.y *= (1 - influence * 0.5);
-          } else if (currentTool === 'inflate') {
-            vertex.addScaledVector(normal, strength * influence * 2);
-          } else if (currentTool === 'twist') {
-            const angle = influence * 0.2;
-            const cos = Math.cos(angle);
-            const sin = Math.sin(angle);
-            const x = vertex.x * cos - vertex.z * sin;
-            const z = vertex.x * sin + vertex.z * cos;
-            vertex.x = x;
-            vertex.z = z;
-          }
-          
-          positions.setXYZ(i, vertex.x, vertex.y, vertex.z);
-        }
-      }
-      
-      positions.needsUpdate = true;
-      geometry.computeVertexNormals();
+    latestPointRef.current = event.point.clone();
+
+    if (!rafScheduledRef.current) {
+      rafScheduledRef.current = true;
+      requestAnimationFrame(() => {
+        rafScheduledRef.current = false;
+        if (latestPointRef.current) processPoint(latestPointRef.current);
+      });
     }
-  }, [clicked, currentTool, raycaster]);
+  }, [clicked, processPoint]);
 
   useFrame((state, delta) => {
     if (meshRef.current) {
